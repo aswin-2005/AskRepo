@@ -19,6 +19,57 @@ Both the indexing descriptions and the query answering use pluggable LLM backend
 
 ---
 
+## Retrieval-Augmented Generation (RAG)
+
+AskRepo is built on the RAG pattern — a technique that improves LLM answers by grounding them in retrieved facts rather than relying on the model's training memory alone.
+
+The problem RAG solves: a codebase is too large to send to an LLM in a single prompt, and even if it fit, the model has no specific knowledge of *your* code. RAG solves this by:
+
+1. **Indexing** — splitting the codebase into small, searchable chunks and storing them in a vector database.
+2. **Retrieval** — when a question arrives, finding the chunks most semantically relevant to it.
+3. **Augmented generation** — constructing a prompt that contains only those relevant chunks and sending it to the LLM, so the model answers from actual context rather than guessing.
+
+### Phase 1: Indexing
+
+```
+Source file
+    └── Parsed into chunks (one per function / class / file / document)
+            └── LLM writes a verbal description of each chunk
+                    └── Description is converted to a vector (embedding)
+                            └── Vector + metadata stored in ChromaDB
+```
+
+Each chunk is described in plain English by an LLM before being embedded. This is important: raw code contains a lot of syntactic noise (brackets, keywords, indentation) that degrades embedding quality. A natural language description captures *intent*, which embeds and retrieves far more accurately.
+
+### Phase 2: Retrieval and Generation
+
+```
+User question
+    └── Question converted to a vector using the same embedding model
+            └── Cosine similarity search against all stored vectors
+                    └── Top-k most similar chunks retrieved
+                            └── Chunks assembled into a context prompt
+                                    └── LLM generates the answer
+```
+
+### What is an Embedding?
+
+An embedding is a fixed-size array of floating-point numbers (a vector) that represents the semantic meaning of a piece of text. Text with similar meaning produces vectors that are geometrically close to each other in high-dimensional space.
+
+For example, the phrase *"function that hashes a password"* and the phrase *"bcrypt-based password encryption routine"* will produce vectors with a high cosine similarity score — even though they share no words. This is what enables natural language search over code.
+
+AskRepo uses [`all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2), a 22M parameter model that produces 384-dimensional vectors. It runs entirely on CPU and takes under a second per query on modern hardware.
+
+### Why not just send all the code to the LLM?
+
+| Approach | Problem |
+|---|---|
+| Send full codebase in prompt | Exceeds context window; expensive; model loses focus in large contexts |
+| Keyword search (grep) | Finds exact text matches, misses semantic relationships |
+| RAG with embeddings | Retrieves semantically relevant chunks; fits in context; accurate |
+
+---
+
 ## How It Works
 
 ```
@@ -289,11 +340,28 @@ These files are read as plain text and stored as a single document chunk each.
 
 ## Embedding Model
 
-AskRepo uses `all-MiniLM-L6-v2` from [sentence-transformers](https://www.sbert.net/) for embedding verbal descriptions. The model is downloaded once on first use and cached locally at `~/.cache/huggingface/`. Subsequent runs load it from disk — no internet connection required.
+AskRepo uses [`all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) from [sentence-transformers](https://www.sbert.net/).
+
+| Property | Value |
+|---|---|
+| Parameters | 22.7 million |
+| Vector dimensions | 384 |
+| Max input tokens | 256 |
+| Runs on | CPU (no GPU required) |
+| Similarity metric | Cosine similarity |
+| Local cache | `~/.cache/huggingface/` |
+
+The model is downloaded once on first use and cached locally. All subsequent runs load from disk — no internet connection required after the initial download.
+
+**Why verbal descriptions are embedded, not raw code**
+
+Embedding raw source code produces vectors that are heavily influenced by syntax — language keywords, punctuation, indentation — rather than the semantic purpose of the code. An LLM-generated description strips the syntactic noise and represents *what the code does* in plain language, which maps much more faithfully to the kind of natural language questions users ask.
+
+For example, a question like *"how is the user session cleaned up?"* will match the description *"removes expired sessions from the in-memory store on a timed schedule"* far more reliably than it would match the raw Python source of that function.
 
 The model is lazy-loaded: it is only initialised when a command actually needs embeddings (`index`, `query`). Commands like `list` and `count` are instant.
 
-To change the embedding model, update `EMBEDDING_MODEL` in `config.py`.
+To change the embedding model, update `EMBEDDING_MODEL` in `config.py`. Any model from the [sentence-transformers model hub](https://www.sbert.net/docs/sentence_transformer/pretrained_models.html) can be used.
 
 ---
 
