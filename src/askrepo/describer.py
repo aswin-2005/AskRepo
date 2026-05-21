@@ -12,7 +12,7 @@ Backends (set DESCRIBER_BACKEND in config.py):
 import time
 import re
 import json
-import config
+from askrepo import config
 
 
 # ---------------------------------------------------------------------------
@@ -227,15 +227,20 @@ def describe_chunk(chunk: dict) -> dict:
 
 def describe_all(chunks: list[dict], verbose: bool = True) -> list[dict]:
     """Fill verbal descriptions for all chunks using the configured backend."""
+    from askrepo import ui  # imported here to avoid circular imports at module load time
+
     backend = config.DESCRIBER_BACKEND.lower()
+    model   = config.OLLAMA_MODEL if backend == "ollama" else config.GROQ_MODEL
+
     if verbose and chunks:
-        print(f"  [describer] backend = {backend}"
-              f"  model = {config.OLLAMA_MODEL if backend == 'ollama' else config.GROQ_MODEL}")
+        ui.print_info(f"Describing {len(chunks)} chunk(s)  "
+                      f"backend=[bold white]{backend}[/]  model=[bold white]{model}[/]")
 
     described = []
-    for i, chunk in enumerate(chunks):
-        if verbose:
-            label = chunk.get("name") or chunk.get("path", "?")
-            print(f"  [{i+1}/{len(chunks)}] Describing {chunk['type']}: {label}")
-        described.append(describe_chunk(chunk))
+    with ui.describe_progress(chunks) as tracker:
+        for chunk in chunks:
+            tracker.update(chunk)
+            described.append(describe_chunk(chunk))
+
     return described
+

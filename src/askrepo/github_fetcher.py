@@ -14,7 +14,7 @@ Usage:
 
 import os
 import subprocess
-import config
+from askrepo import config
 
 REPOS_CACHE_DIR = config.REPOS_CACHE_DIR
 

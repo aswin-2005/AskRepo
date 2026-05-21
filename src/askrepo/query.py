@@ -13,8 +13,8 @@ Query flow:
 """
 
 import json
-import config
-import store as store_module
+from askrepo import config
+from askrepo import store as store_module
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +154,11 @@ documentation from a codebase. Answer the user's question using ONLY the context
 provided below. If the answer is not present in the context, say so clearly.
 Do not make up information about code that is not shown.
 
+Formatting rules:
+- Write in clear, plain prose. Do NOT use markdown headers (##, ###) or bold/italic markers.
+- You MAY use fenced code blocks (```language ... ```) for code snippets.
+- Keep the answer concise and directly useful.
+
 === CONTEXT ===
 
 {context_blocks}
@@ -168,26 +173,28 @@ Answer:"""
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-def answer(user_query: str, top_k: int = None, verbose: bool = False) -> str:
+def answer(
+    user_query: str,
+    top_k: int = None,
+    verbose: bool = False,
+) -> tuple[str, list[dict], str, str]:
     """
-    Full query pipeline: retrieve -> build prompt -> call LLM -> return answer.
+    Full query pipeline: retrieve -> build prompt -> call LLM -> return result.
 
-    The LLM backend is determined by config.DESCRIBER_BACKEND ('groq' or 'ollama').
+    Returns
+    -------
+    (answer_text, retrieved_chunks, backend_name, model_name)
+    The caller (main.py) decides how to display them.
     """
     k = top_k or config.TOP_K
+    backend = config.QUERY_BACKEND.lower()
+    model   = config.OLLAMA_MODEL if backend == "ollama" else config.GROQ_MODEL
 
     chunks = store_module.search(user_query, top_k=k)
     if not chunks:
-        return "No indexed code found. Please run `index` first."
-
-    if verbose:
-        backend = config.QUERY_BACKEND.lower()
-        model = config.OLLAMA_MODEL if backend == "ollama" else config.GROQ_MODEL
-        print(f"\nRetrieved {len(chunks)} chunks:")
-        for c in chunks:
-            name = c.get("name") or c.get("path", "?")
-            print(f"  [{c.get('type','?')}] {name}  (score: {c.get('score', '?')})")
-        print(f"\n[query] backend = {backend}  model = {model}")
+        return "No indexed code found. Please run `index` first.", [], backend, model
 
     prompt = _build_prompt(user_query, chunks)
-    return _call_llm(prompt)
+    result = _call_llm(prompt)
+    return result, chunks, backend, model
+

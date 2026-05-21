@@ -18,8 +18,10 @@ the sentence-transformers model is only loaded when you actually index or query.
 """
 
 import json
+import os
+import shutil
 import chromadb
-import config
+from askrepo import config
 
 # ---------------------------------------------------------------------------
 # Lazy embedding function — only loaded when semantic operations are needed
@@ -221,13 +223,21 @@ def collection_count() -> int:
 
 
 def clear_collection() -> None:
-    """Delete and recreate the collection (wipes all indexed data)."""
-    global _embed_collection, _meta_collection
-    client = _get_client()
-    try:
-        client.delete_collection(config.COLLECTION_NAME)
-    except Exception:
-        pass
+    """
+    Wipe the entire ChromaDB data directory from disk.
+
+    Deletes the whole chroma_db folder (SQLite + all UUID segment files) so no
+    orphaned binary files are left behind. Singletons are reset so the next
+    index/query call recreates everything from scratch.
+    """
+    global _client, _embed_collection, _meta_collection
+
+    # Close the client before deleting its files
+    _client = None
     _embed_collection = None
-    _meta_collection  = None
+    _meta_collection = None
+
+    db_path = config.CHROMA_DB_PATH
+    if os.path.exists(db_path):
+        shutil.rmtree(db_path)
     print("Collection cleared.")

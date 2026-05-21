@@ -12,7 +12,7 @@ loader function and ensure JS-style or Python-style extractor handles it.
 To add a new simple file type: add the extension to SIMPLE_EXTENSIONS.
 """
 
-import config
+from askrepo import config
 import os
 from tree_sitter import Language, Parser
 

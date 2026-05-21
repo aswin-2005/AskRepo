@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "askrepo"
+version = "0.1.0"
+description = "Codebase Intelligence AI — chat with any codebase using semantic search and LLMs"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Aswin" }
+]
+keywords = ["rag", "code-search", "llm", "chromadb", "cli", "developer-tools"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "tree_sitter",
+    "tree_sitter_python",
+    "tree_sitter_javascript",
+    "tree_sitter_typescript",
+    "groq",
+    "chromadb",
+    "sentence-transformers",
+    "python-dotenv",
+    "rich",
+]
+
+[project.scripts]
+askrepo = "askrepo.main:main"
+
+[project.urls]
+Homepage = "https://github.com/aswin-2005/askrepo"
+Repository = "https://github.com/aswin-2005/askrepo"
+Issues = "https://github.com/aswin-2005/askrepo/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"

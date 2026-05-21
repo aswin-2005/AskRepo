@@ -6,8 +6,12 @@ Tweak values here — no need to touch any other file.
 """
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
+
+# User-level data directory — works correctly regardless of install location
+_DATA_DIR = Path.home() / ".askrepo"
 
 # ---------------------------------------------------------------------------
 # HuggingFace — work fully offline after first model download
@@ -46,7 +50,7 @@ OLLAMA_MODEL    = "gemma:2b"
 # ---------------------------------------------------------------------------
 # Vector store (ChromaDB — fully local)
 # ---------------------------------------------------------------------------
-CHROMA_DB_PATH  = "./chroma_db"
+CHROMA_DB_PATH  = str(_DATA_DIR / "chroma_db")
 COLLECTION_NAME = "codebase"
 
 # Number of chunks returned per semantic search
@@ -58,7 +62,7 @@ EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 # ---------------------------------------------------------------------------
 # GitHub repo cache
 # ---------------------------------------------------------------------------
-REPOS_CACHE_DIR = "./repos"
+REPOS_CACHE_DIR = str(_DATA_DIR / "repos")
 
 # ---------------------------------------------------------------------------
 # File discovery — what to index
